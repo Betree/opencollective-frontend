@@ -1,151 +1,165 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { FormattedMessage } from 'react-intl';
+import { graphql } from '@apollo/react-hoc';
+import { defineMessages, FormattedMessage, injectIntl } from 'react-intl';
 
 import hasFeature, { FEATURES } from '../lib/allowed-features';
 import { generateNotFoundError } from '../lib/errors';
-import { addCollectiveCoverData } from '../lib/graphql/queries';
+import { API_V2_CONTEXT, gqlV2 } from '../lib/graphql/helpers';
 
-import Body from '../components/Body';
 import CollectiveNavbar from '../components/CollectiveNavbar';
+import Container from '../components/Container';
 import ErrorPage from '../components/ErrorPage';
-import ExpensesStatsWithData from '../components/expenses/ExpensesStatsWithData';
-import ExpensesWithData from '../components/expenses/ExpensesWithData';
-import Footer from '../components/Footer';
-import Header from '../components/Header';
+import ExpensesList from '../components/expenses/ExpensesList';
+import { Box, Flex } from '../components/Grid';
+import LoadingPlaceholder from '../components/LoadingPlaceholder';
+import Page from '../components/Page';
 import PageFeatureNotSupported from '../components/PageFeatureNotSupported';
-import SectionTitle from '../components/SectionTitle';
-import { withUser } from '../components/UserProvider';
+import { H1 } from '../components/Text';
 
-class ExpensesPage extends React.Component {
-  static getInitialProps({ query: { collectiveSlug, filter, value } }) {
-    return { slug: collectiveSlug, filter, value };
+import ExpenseInfoSidebar from './ExpenseInfoSidebar';
+
+const messages = defineMessages({
+  title: {
+    id: 'ExpensesPage.title',
+    defaultMessage: '{collectiveName} · Submit expense',
+  },
+});
+
+class ExpensePage extends React.Component {
+  static getInitialProps({ query: { parentAccountSlug, accountSlug } }) {
+    return { parentAccountSlug, accountSlug };
   }
 
   static propTypes = {
-    slug: PropTypes.string, // for addCollectiveCoverData
-    filter: PropTypes.string,
-    value: PropTypes.string,
-    data: PropTypes.object.isRequired, // from withData
-    LoggedInUser: PropTypes.object,
+    accountSlug: PropTypes.string,
+    parentAccountSlug: PropTypes.string,
+    /** from injectIntl */
+    intl: PropTypes.object,
+    data: PropTypes.shape({
+      loading: PropTypes.bool,
+      error: PropTypes.any,
+      account: PropTypes.shape({
+        id: PropTypes.string.isRequired,
+      }),
+      expenses: PropTypes.shape({
+        nodes: PropTypes.array,
+      }),
+    }),
   };
 
-  render() {
-    const { data, slug } = this.props;
-    const { LoggedInUser } = this.props;
-
-    if (!data || data.error || data.loading) {
-      return <ErrorPage data={data} />;
-    } else if (!data.Collective) {
-      return <ErrorPage error={generateNotFoundError(slug, true)} log={false} />;
-    } else if (!hasFeature(data.Collective, FEATURES.RECEIVE_EXPENSES)) {
-      return <PageFeatureNotSupported />;
+  getPageMetaData(collective) {
+    if (collective) {
+      return { title: this.props.intl.formatMessage(messages.title, { collectiveName: collective.name }) };
+    } else {
+      return { title: `Expenses` };
     }
+  }
 
-    const collective = data.Collective;
-    const canEdit = LoggedInUser && LoggedInUser.canEditCollective(collective);
+  render() {
+    const { accountSlug, data } = this.props;
 
-    let action, subtitle, filter;
-    subtitle = <FormattedMessage id="section.expenses.subtitle" defaultMessage="All expenses" />;
-
-    if (this.props.value) {
-      action = {
-        label: <FormattedMessage id="expenses.viewAll" defaultMessage="View All Expenses" />,
-        href: `/${collective.slug}/expenses`,
-      };
-
-      if (this.props.filter === 'categories') {
-        const category = decodeURIComponent(this.props.value);
-        filter = { category };
-        subtitle = (
-          <FormattedMessage id="expenses.byCategory" defaultMessage="Expenses in {category}" values={{ category }} />
-        );
-      }
-      if (this.props.filter === 'recipients') {
-        const recipient = decodeURIComponent(this.props.value);
-        filter = { fromCollectiveSlug: recipient };
-        subtitle = (
-          <FormattedMessage id="expenses.byRecipient" defaultMessage="Expenses by {recipient}" values={{ recipient }} />
-        );
+    if (!data.loading) {
+      if (!data || data.error) {
+        return <ErrorPage data={data} />;
+      } else if (!data.account) {
+        return <ErrorPage error={generateNotFoundError(accountSlug, true)} log={false} />;
+      } else if (!hasFeature(data.account, FEATURES.RECEIVE_EXPENSES)) {
+        return <PageFeatureNotSupported />;
       }
     }
 
     return (
-      <div className="ExpensesPage">
-        <style jsx>
-          {`
-            .columns {
-              display: flex;
-            }
-
-            .col.side {
-              width: 100%;
-              min-width: 20rem;
-              max-width: 25%;
-              margin-left: 5rem;
-            }
-
-            .col.large {
-              width: 100%;
-              min-width: 30rem;
-              max-width: 75%;
-            }
-
-            @media (max-width: 600px) {
-              .columns {
-                flex-direction: column-reverse;
-              }
-              .columns .col {
-                max-width: 100%;
-              }
-            }
-          `}
-        </style>
-
-        <Header collective={collective} LoggedInUser={LoggedInUser} />
-
-        <Body>
-          <CollectiveNavbar
-            collective={collective}
-            isAdmin={canEdit}
-            showEdit
-            callsToAction={{ hasContact: collective.canContact, hasSubmitExpense: !collective.isArchived }}
-          />
-
-          <div className="content">
-            <SectionTitle
-              title={<FormattedMessage id="section.expenses.title" defaultMessage="Expenses" />}
-              subtitle={subtitle}
-              action={action}
-            />
-
-            <div className=" columns">
-              <div className="col large">
-                <ExpensesWithData
-                  collective={collective}
-                  host={collective.host}
-                  LoggedInUser={LoggedInUser}
-                  filters={filter}
+      <Page collective={data.account} {...this.getPageMetaData(data.account)} withoutGlobalStyles>
+        <CollectiveNavbar collective={data.account} isLoading={!data.account} />
+        <Container position="relative" minHeight={[null, 800]}>
+          <Box maxWidth={1242} m="0 auto" px={[2, 3, 4]} py={[4, 5]}>
+            <Flex justifyContent="space-between" flexWrap="wrap">
+              <Box flex="1 1 500px" minWidth={300} maxWidth={750} mr={[0, 3, 5]} mb={5}>
+                <H1 fontSize="H4" lineHeight="H4" mb={24} py={2}>
+                  <FormattedMessage id="section.expenses.title" defaultMessage="Expenses" />
+                </H1>
+                <ExpensesList expenses={data.expenses?.nodes} />
+              </Box>
+              <Box minWidth={270} width={['100%', null, null, 275]} mt={70}>
+                <ExpenseInfoSidebar
+                  isLoading={data.loading}
+                  collective={data.account}
+                  host={data.account?.host}
+                  expense={{ tags: data.account?.expensesTags }}
                 />
-              </div>
-
-              <div className="col side">
-                <ExpensesStatsWithData slug={collective.slug} />
-              </div>
-            </div>
-          </div>
-        </Body>
-
-        <Footer />
-      </div>
+              </Box>
+            </Flex>
+          </Box>
+        </Container>
+      </Page>
     );
   }
 }
 
-export default withUser(
-  addCollectiveCoverData(ExpensesPage, {
-    options: props => ({
-      variables: { slug: props.slug, throwIfMissing: false },
-    }),
-  }),
-);
+const EXPENSES_PAGE_QUERY = gqlV2`
+  query ExpensesPageQuery($accountSlug: String!) {
+    account(slug: $accountSlug) {
+      id
+      slug
+      type
+      imageUrl
+      expensesTags {
+        id
+        tag
+      }
+      ... on Event {
+        balance
+        host {
+          id
+          name
+          slug
+          type
+        }
+      }
+      ... on Collective {
+        balance
+        host {
+          id
+          name
+          slug
+          type
+        }
+      }
+    }
+    expenses(account: {slug: $accountSlug}) {
+      totalCount
+      offset
+      limit
+      nodes {
+        id
+        description
+        status
+        createdAt
+        tags
+        amount
+        currency
+        payee {
+          id
+          type
+          slug
+          imageUrl(height: 80)
+        }
+        createdByAccount {
+          id
+          type
+          slug
+        }
+      }
+    }
+  }
+`;
+
+const getData = graphql(EXPENSES_PAGE_QUERY, {
+  options: {
+    context: API_V2_CONTEXT,
+    pollInterval: 60000, // Will refresh the data every 60s to get new expenses
+  },
+});
+
+export default injectIntl(getData(ExpensePage));

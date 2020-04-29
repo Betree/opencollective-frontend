@@ -183,6 +183,7 @@ class CollectiveCategoryPicker extends React.Component {
                       onClick={() => {
                         this.handleChange('category', 'community');
                       }}
+                      data-cy="ccf-category-picker-button-community"
                     >
                       {intl.formatMessage(this.messages.community)}
                     </StyledButton>

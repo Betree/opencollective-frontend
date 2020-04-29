@@ -248,6 +248,7 @@ class CreateCollectiveForm extends React.Component {
                       required
                       mt={4}
                       mb={3}
+                      data-cy="ccf-form-name"
                     >
                       {inputProps => <Field as={StyledInput} {...inputProps} placeholder={placeholders.name} />}
                     </StyledInputField>
@@ -260,6 +261,7 @@ class CreateCollectiveForm extends React.Component {
                       required
                       mt={3}
                       mb={2}
+                      data-cy="ccf-form-slug"
                     >
                       {inputProps => (
                         <Field

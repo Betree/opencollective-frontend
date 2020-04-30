@@ -287,7 +287,6 @@ class SectionContributions extends React.PureComponent {
                       onChange={filter => this.setState({ selectedFilter: filter })}
                       selected={selectedFilter}
                       justifyContent="left"
-                      minButtonWidth={175}
                       px={Dimensions.PADDING_X}
                     />
                   </Box>

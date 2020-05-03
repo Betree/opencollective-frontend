@@ -47,6 +47,12 @@ const TransactionsAndExpensesQuery = gql`
  * abut the global budget of the collective.
  */
 const SectionBudget = ({ collective, stats }) => {
+  const monthlyRecurring =
+    (stats.activeRecurringContributions?.monthly || 0) + (stats.activeRecurringContributions?.yearly || 0) / 12;
+  const termParams = {
+    monthlyRecurring: formatCurrency(monthlyRecurring, collective.currency),
+    totalReceivedInLast12Months: formatCurrency(stats?.totalAmountReceived || 0, collective.currency),
+  };
   return (
     <ContainerSectionContent pt={[4, 5]} pb={3}>
       <SectionTitle>
@@ -143,7 +149,13 @@ const SectionBudget = ({ collective, stats }) => {
             </P>
           </Box>
           <Container data-cy="budgetSection-estimated-budget" flex="1" background="#F5F7FA" py={16} px={4}>
-            <DefinedTerm term={Terms.ESTIMATED_BUDGET} fontSize="Tiny" textTransform="uppercase" color="black.700" />
+            <DefinedTerm
+              term={Terms.ESTIMATED_BUDGET}
+              fontSize="Tiny"
+              textTransform="uppercase"
+              color="black.700"
+              termParams={termParams}
+            />
             <P fontSize="H5" mt={2}>
               <Span fontWeight="bold">~ {formatCurrency(stats.yearlyBudget, collective.currency)}</Span>{' '}
               <Span color="black.400">{collective.currency}</Span>
@@ -168,6 +180,8 @@ SectionBudget.propTypes = {
   stats: PropTypes.shape({
     balance: PropTypes.number.isRequired,
     yearlyBudget: PropTypes.number.isRequired,
+    activeRecurringContributions: PropTypes.object,
+    totalAmountReceived: PropTypes.number,
   }),
 
   /** @ignore from injectIntl */

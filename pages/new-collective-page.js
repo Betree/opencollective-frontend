@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { createGlobalStyle } from 'styled-components';
 
 import { generateNotFoundError } from '../lib/errors';
+import { date12MonthsAgo } from '../lib/utils';
 
 import CollectivePage from '../components/collective-page';
 import CollectiveNotificationBar from '../components/collective-page/CollectiveNotificationBar';
@@ -214,6 +215,8 @@ const getCollective = graphql(getCollectivePageQuery, {
     variables: {
       slug: props.slug,
       nbContributorsPerContributeCard: MAX_CONTRIBUTORS_PER_CONTRIBUTE_CARD,
+      endDate: new Date().toUTCString(),
+      startDate: date12MonthsAgo(new Date()).toUTCString(),
     },
   }),
 });

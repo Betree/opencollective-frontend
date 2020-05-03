@@ -63,7 +63,8 @@ const TranslatedDefinitions = defineMessages({
   },
   [Terms.ESTIMATED_BUDGET]: {
     id: 'CollectivePage.SectionBudget.Annual.Definition',
-    defaultMessage: 'Projected annual budget based on total financial contributions from the past 12 months.',
+    defaultMessage:
+      'Projected annual budget based on total financial contributions from the past 12 months.{linebreak}{linebreak} Monthly recurring: {monthlyRecurring}.{linebreak} Total received in the last 12 months: {totalReceivedInLast12Months}',
   },
   [Terms.EXPENSE_TYPE]: {
     id: 'expense.type.tooltip',
@@ -81,6 +82,9 @@ const GiftCardLearnMoreLink = msg => (
 const TranslationParams = {
   [Terms.GIFT_CARD]: {
     'learn-more-link': GiftCardLearnMoreLink,
+  },
+  [Terms.ESTIMATED_BUDGET]: {
+    linebreak: <br />,
   },
 };
 
@@ -104,9 +108,10 @@ const UnderlinedTerm = styled.span`
  * Underlines the given word and show a tooltip with the definition when focused
  * or hovered. Both the term and the definition are translated.
  */
-const DefinedTerm = ({ intl, term, textTransform, fontSize, children, color }) => {
+const DefinedTerm = ({ intl, term, textTransform, fontSize, children, color, termParams }) => {
+  const translationParams = { ...TranslationParams[term], ...termParams };
   return (
-    <StyledTooltip content={() => intl.formatMessage(TranslatedDefinitions[term], TranslationParams[term])}>
+    <StyledTooltip content={() => intl.formatMessage(TranslatedDefinitions[term], translationParams)}>
       {props => (
         <UnderlinedTerm {...props} textTransform={textTransform} color={color} borderColor={color} fontSize={fontSize}>
           {children || intl.formatMessage(TranslatedTerms[term])}
@@ -129,6 +134,8 @@ DefinedTerm.propTypes = {
   children: PropTypes.node,
   /** @ignore from injectIntl */
   intl: PropTypes.object.isRequired,
+  /** Paramaters passed into the term definition message */
+  termParams: PropTypes.object.isRequired,
 };
 
 DefinedTerm.defaultProps = {

@@ -44,6 +44,7 @@ class NotificationBar extends React.Component {
       collectiveId: null,
     };
   }
+
   render() {
     const { status, error, title, description, actions, collective, LoggedInUser, host } = this.props;
 
